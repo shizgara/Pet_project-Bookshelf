@@ -1,0 +1,6 @@
+---
+# Restart supervisor service
+- name: Handler restart supervisor service
+  ansible.builtin.service:
+    name: supervisor.service
+    state: restarted

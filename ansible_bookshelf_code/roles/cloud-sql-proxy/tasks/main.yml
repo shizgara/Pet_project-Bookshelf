@@ -1,0 +1,25 @@
+---
+# Create user for cloud-sql-proxy service
+- name: Add the sql_proxy user
+  ansible.builtin.user:
+    name: sql_proxy 
+    shell: /usr/bin/false
+    system: yes #
+
+# Download cloud-sql-proxy in /usr/local/bin and give permission 0755
+- name: Dowbload cloud-sql-proxy
+  ansible.builtin.get_url:
+    url: https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64
+    dest: /usr/local/bin/cloud_sql_proxy
+    mode: '0755'
+
+# Copy sql_proxy.service file
+- name: Copy sql_proxy.service file
+  ansible.builtin.template:
+    src: cloud-sql-proxy.service.j2
+    dest: /etc/systemd/system/sql_proxy.service
+  notify: 
+    - Handler restart Cloud Sql Proxy
+    
+- name: Restart Cloud Sql Proxy and daemon-reaload
+  ansible.builtin.meta: flush_handlers

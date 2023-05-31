@@ -1,0 +1,19 @@
+---
+# Download fluentd into /opt/app/ with permissions rwxr-xr-x
+- name: Download fluentd
+  ansible.builtin.get_url:
+    url: https://storage.googleapis.com/signals-agents/logging/google-fluentd-install.sh
+    dest: /opt/google-fluentd-install.sh
+    mode: '0755'
+
+# Run script google-fluentd-install.sh
+- name: Run script 
+  ansible.builtin.script: /opt/google-fluentd-install.sh # run script
+
+# Restart service fluentd
+- name: Restart service fluentd
+  ansible.builtin.systemd:
+    name: google-fluentd.service
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

@@ -1,0 +1,89 @@
+---
+# Create user for pythonapp service
+- name: Add the pythonapp user
+  ansible.builtin.user:
+    name: pythonapp 
+    shell: /usr/bin/false # disable shell for current user
+    system: yes # make service account
+
+# Create directory for app and change ownership
+- name: Create directory and change ownership
+  ansible.builtin.file:
+    path: /opt/app 
+    state: directory 
+    recurse: yes
+    owner: pythonapp
+    group: pythonapp
+    mode : '0755'
+
+# Clone bookshelf code from my Cloud Source Repositories and put it into /opt/app/bookshelf-gurskyi
+- name: Clone bookshelf code from my Cloud Source Repositories
+  ansible.builtin.shell: gcloud source repos clone bookshelf-code /opt/app/bookshelf-gurskyi --project=gcp-2022-bookshelf-gurskyi
+
+# Purge man-db
+- name: Uninstall man-db
+  ansible.builtin.apt:
+    name: man-db
+    purge: true
+
+# Install dependencies from apt
+- name: Install dependencies build-essential, supervisor, python3-dev, libffi-dev, libssl-dev
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes # before install make "sudo apt update"
+  loop:
+    - build-essential
+    - supervisor
+    - python3-dev
+    - libffi-dev
+    - libssl-dev
+
+# Install(upgrade) pip, virtualenv 
+- name: Install(upgrade) pip, virtualenv
+  ansible.builtin.pip:
+    name: "{{ item }}"
+    extra_args: --upgrade
+  loop:
+    - pip
+    - virtualenv
+
+# Install app dependencies and create venv
+- name: Install app dependencies and create venv
+  ansible.builtin.pip:
+    virtualenv_python: python3.7
+    requirements: /opt/app/bookshelf-gurskyi/gce/requirements.txt
+    virtualenv: /opt/app/bookshelf-gurskyi/gce/env
+
+# Template file for config.py
+- name: Config config.py
+  ansible.builtin.template:
+    src: config.py.j2
+    dest: /opt/app/bookshelf-gurskyi/gce/config.py
+
+# Create table in DB
+- name: Create table in DB
+  ansible.builtin.shell: /opt/app/bookshelf-gurskyi/gce/env/bin/python /opt/app/bookshelf-gurskyi/gce/bookshelf/model_cloudsql.py
+
+# Template file for python-app.conf
+- name: Coonfig python-app.conf
+  ansible.builtin.template:
+    src: python-app.conf.j2
+    dest: /etc/supervisor/conf.d/python-app.conf
+  notify:
+    - Handler restart supervisor service
+
+- name: Restart supervisor.service
+  ansible.builtin.meta: flush_handlers
+
+# # Supervisorctl reread(if use community.general.supervisorctl)
+# - name: Supervisorctl reread
+#   community.general.supervisorctl:
+#     name: pythonapp
+#     state: present
+
+# # Supervisorctl update (if use community.general.supervisorctl)
+# - name: Supervisorctl update
+#   community.general.supervisorctl:
+#     name: pythonapp
+#     state: restarted

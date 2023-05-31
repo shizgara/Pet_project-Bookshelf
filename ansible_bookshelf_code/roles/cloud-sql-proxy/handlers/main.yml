@@ -1,0 +1,8 @@
+---
+# Restart sql_proxy service
+- name: Handler restart Cloud Sql Proxy
+  ansible.builtin.systemd:
+    name: sql_proxy.service
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
